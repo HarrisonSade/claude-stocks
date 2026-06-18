@@ -1,0 +1,44 @@
+name: Daily Stock Email
+
+on:
+  schedule:
+    - cron: '31 13 * * 1-5'  # 6:31 AM PDT (market open), Mon-Fri
+    - cron: '1 20 * * 1-5'   # 1:01 PM PDT (market close), Mon-Fri
+  workflow_dispatch:           # allows manual trigger from GitHub UI
+
+jobs:
+  send-email:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance python-dotenv
+
+      - name: Run morning email
+        if: github.event.schedule == '31 13 * * 1-5'
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python daily_stock_email.py
+
+      - name: Run market close email
+        if: github.event.schedule == '1 20 * * 1-5'
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python daily_stock_email.py --close
+
+      - name: Manual trigger (defaults to close)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python daily_stock_email.py --close
